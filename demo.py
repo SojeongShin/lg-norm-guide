@@ -190,7 +190,13 @@ def answer(corpus: rag.Corpus, question: str, samples: list[str], categories: li
         canned = _filtered(FOLLOWUPS[sample_idx][1], categories)
         if canned:
             return canned
-    return _from_retrieval(question, categories, retrieved)
+    result = _from_retrieval(question, categories, retrieved)
+    if followup:
+        result["situation_summary"] = f"후속 질문 · {question}"
+        result["demo_notice"] = ("데모 모드에서는 미리 준비된 후속 질문에만 상황에 맞춘 답변을 드립니다. "
+                                 "아래는 첫 상황과 이번 질문을 함께 검색한 관련 조항 원문입니다. "
+                                 "실제 서비스(API 연결)에서는 앞선 대화를 이어받아 구체적인 대처를 안내합니다.")
+    return result
 
 
 def match_sample(question: str, samples: list[str]) -> int | None:

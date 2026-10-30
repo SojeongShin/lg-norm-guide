@@ -243,6 +243,9 @@ def render_turn(ti: int, turn: dict):
                 unsafe_allow_html=True)
     st.caption(turn["meta"])
 
+    if r.get("demo_notice"):
+        st.markdown(f"<div class='nobasis' style='font-size:1.05rem;background:#eef4ff;border-left-color:#4C7BD9'>"
+                    f"🧪 {html.escape(r['demo_notice'])}</div>", unsafe_allow_html=True)
     if not r["has_basis"]:
         st.markdown(f"<div class='nobasis'>⚠️ <b>명확하게 알 수 없음</b> — {html.escape(r['no_basis_message'])}</div>",
                     unsafe_allow_html=True)

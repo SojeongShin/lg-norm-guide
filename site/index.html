@@ -18,21 +18,24 @@
     <script type="module">
       import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@1.10.0/build/stlite.js";
       // 브라우저(Pyodide)에서 실행되는 데모 모드 전용 배포본 - API 키를 사용하지 않는다.
+      // GitHub Pages는 파일을 최대 10분 캐시하므로, 앱 파일은 항상 캐시 없이(no-store) 새로 받는다.
+      const TEXT = ["app.py", "rag.py", "demo.py",
+                    "corpus/anticorruption.txt", "corpus/ethics.txt", "corpus/conduct.txt", "corpus/tax.txt"];
+      const BINARY = ["assets/lens-symbol.png", "assets/favicon.png"];
+      const get = (path) => fetch(`./${path}?t=${Date.now()}`, { cache: "no-store" }).then((r) => {
+        if (!r.ok) throw new Error(`${path}: ${r.status}`);
+        return r;
+      });
+      const files = {};
+      await Promise.all([
+        ...TEXT.map(async (p) => { files[p] = await (await get(p)).text(); }),
+        ...BINARY.map(async (p) => { files[p] = new Uint8Array(await (await get(p)).arrayBuffer()); }),
+      ]);
       mount(
         {
           requirements: [],
           entrypoint: "app.py",
-          files: {
-            "app.py": { url: "./app.py?v=__BUILD__" },
-            "rag.py": { url: "./rag.py?v=__BUILD__" },
-            "demo.py": { url: "./demo.py?v=__BUILD__" },
-            "corpus/anticorruption.txt": { url: "./corpus/anticorruption.txt?v=__BUILD__" },
-            "corpus/ethics.txt": { url: "./corpus/ethics.txt?v=__BUILD__" },
-            "corpus/conduct.txt": { url: "./corpus/conduct.txt?v=__BUILD__" },
-            "corpus/tax.txt": { url: "./corpus/tax.txt?v=__BUILD__" },
-            "assets/lens-symbol.png": { url: "./assets/lens-symbol.png?v=__BUILD__" },
-            "assets/favicon.png": { url: "./assets/favicon.png?v=__BUILD__" },
-          },
+          files,
           streamlitConfig: { "client.toolbarMode": "viewer" },
         },
         document.getElementById("root"),
