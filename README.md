@@ -1,4 +1,6 @@
-# LG 규범 가이드 챗봇
+# LENS - LG Employee Norm Support
+
+LG 규범 가이드 챗봇
 
 ## 실행
 ```bash
