@@ -54,9 +54,10 @@ st.markdown("""
 .summary-line {font-size:1.3rem; padding:14px 18px; background:#f4f4f6; border-radius:8px; margin:6px 0 4px}
 .disclaimer-bar {position:fixed; left:0; right:0; bottom:0; z-index:999; background:#2b2b2b; color:#fff;
                  font-size:.95rem; text-align:center; padding:8px 12px}
-.lens-title {font-size:3.2rem; font-weight:900; letter-spacing:.06em; color:#A50034; line-height:1.1; margin:0}
-.lens-sub {font-size:1.25rem; font-weight:600; color:#666; margin:2px 0 10px}
-.lens-lead {font-size:1.2rem; line-height:1.7; margin-bottom:6px}
+.lens-title {font-size:5.5rem !important; font-weight:900; letter-spacing:.08em; color:#A50034; line-height:1.05; margin:0 0 4px}
+.lens-sub {font-size:2rem !important; font-weight:700; color:#555; margin:0 0 16px}
+.lens-lead {font-size:1.2rem !important; line-height:1.7; margin-bottom:10px}
+@media (max-width: 640px) {.lens-title {font-size:3.4rem !important} .lens-sub {font-size:1.4rem !important}}
 .nobasis {font-size:1.25rem; line-height:1.7; background:#fff4e5; border-left:6px solid #E8A33D; border-radius:8px; padding:14px 18px; margin:10px 0}
 .todo-title {font-size:1.5rem; font-weight:800; margin:22px 0 6px}
 div[data-testid='stCheckbox'] label p {font-size:1.2rem !important; line-height:1.7}
@@ -114,10 +115,10 @@ with st.sidebar:
     st.button("🔄 새 상담 시작", on_click=reset)
 
 # ---------------------------------------------------------------- 입력 ---
-st.markdown("<p class='lens-title'>🔍 LENS</p>"
-            "<p class='lens-sub'>LG Employee Norm Support</p>"
-            "<p class='lens-lead'>내 상황을 말하면 <b>행동강령 · 윤리규범 · 부패방지 규정 · 세무 정책</b>에서 "
-            "해당 조항을 찾아 <b>지금 어떻게 해야 하는지</b> 알려드립니다.</p>", unsafe_allow_html=True)
+st.markdown("<div class='lens-title'>🔍 LENS</div>"
+            "<div class='lens-sub'>LG Employee Norm Support</div>"
+            "<div class='lens-lead'>내 상황을 말하면 <b>행동강령 · 윤리규범 · 부패방지 규정 · 세무 정책</b>에서 "
+            "해당 조항을 찾아 <b>지금 어떻게 해야 하는지</b> 알려드립니다.</div>", unsafe_allow_html=True)
 
 st.markdown("**샘플 상황** (클릭하면 입력창과 우선순위가 채워집니다)")
 cols = st.columns(len(SAMPLES))
