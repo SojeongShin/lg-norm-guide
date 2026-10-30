@@ -103,6 +103,7 @@ ss.setdefault("history", [])   # Claude messages (user/assistant 교대)
 ss.setdefault("active_cats", [])
 ss.setdefault("situation", "")
 ss.setdefault("cats", [])
+ss.setdefault("sample_idx", None)  # 첫 질문이 샘플과 일치하면 그 번호 (추천 후속 질문 연결)
 
 
 def apply_sample(i):
@@ -111,7 +112,7 @@ def apply_sample(i):
 
 
 def reset():
-    ss.turns, ss.history, ss.active_cats = [], [], []
+    ss.turns, ss.history, ss.active_cats, ss.sample_idx = [], [], [], None
 
 
 # ---------------------------------------------------------------- 사이드바 ---
@@ -165,12 +166,15 @@ def run_query(question: str, followup: bool):
     user_turn = rag.build_user_turn(question, cats, retrieved, followup)
     status = st.empty()
     t0 = time.time()
+    if not followup:
+        ss.sample_idx = demo.match_sample(question, [s[1] for s in SAMPLES])
 
     def run_demo(note=""):
         with st.spinner("관련 조항을 검색하고 분석하는 중…"):
             if sys.platform != "emscripten":  # 브라우저(Pyodide)에서는 대기 생략
                 time.sleep(1.2)
-            result = demo.answer(corpus, question, [s[1] for s in SAMPLES], cats, retrieved, followup)
+            result = demo.answer(corpus, question, [s[1] for s in SAMPLES], cats, retrieved, followup,
+                                 ss.sample_idx)
         ss.turns.append({"question": question, "result": result, "retrieved": retrieved, "followup": followup,
                          "meta": f"🧪 데모 모드 · API 미호출 (샘플은 사전 작성 답변, 그 외는 검색 결과){note}"})
 
@@ -280,6 +284,14 @@ if ss.turns:
         render_turn(ti, turn)
         if ti < len(ss.turns) - 1:
             st.divider()
+
+    # 샘플로 시작한 상담이면 대표 후속 질문을 버튼으로 제안 (아직 묻지 않았을 때만)
+    suggested = demo.FOLLOWUPS[ss.sample_idx][0] if ss.sample_idx is not None else None
+    if suggested and all(t["question"] != suggested for t in ss.turns):
+        st.markdown("<div class='todo-title' style='font-size:1.2rem'>💡 이어서 물어보기</div>", unsafe_allow_html=True)
+        if st.button(suggested, key="suggest"):
+            run_query(suggested, followup=True)
+            st.rerun()
 
     follow = st.chat_input("후속 질문을 입력하세요 (예: 이미 받아버렸으면 어떻게 하나요?)")
     if follow:

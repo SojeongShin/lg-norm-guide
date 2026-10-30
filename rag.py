@@ -161,12 +161,17 @@ def _load_conduct() -> list[Chunk]:
     chunks: list[Chunk] = []
     for item, start, end in CONDUCT_ITEMS:
         lines = _clean_lines("\n".join(pages[start + 1: end + 2]))
-        sub, buf = "개요", []
+        sub, buf, seen = "개요", [], {}
 
         def flush():
             body = _join(buf)
-            if body:
-                chunks.append(Chunk(f"cd-{len(chunks)}", "conduct", f"행동강령 '{item}' > {sub}", body))
+            if not body:
+                return
+            if sub in seen:  # 같은 항목에 같은 소제목이 두 번 나오면(예: '뇌물수수 금지' 정도의 실천) 하나로 합침
+                seen[sub].text += "\n\n" + body
+                return
+            seen[sub] = Chunk(f"cd-{len(chunks)}", "conduct", f"행동강령 '{item}' > {sub}", body)
+            chunks.append(seen[sub])
 
         for s in lines:
             if s in CONDUCT_SUBHEADS:

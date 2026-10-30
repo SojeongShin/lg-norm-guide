@@ -178,15 +178,45 @@ def _similar(a: str, b: str) -> float:
 
 
 def answer(corpus: rag.Corpus, question: str, samples: list[str], categories: list[str],
-           retrieved: list[tuple[rag.Chunk, float]], followup: bool) -> dict:
+           retrieved: list[tuple[rag.Chunk, float]], followup: bool, sample_idx: int | None = None) -> dict:
+    """샘플(또는 샘플의 대표 후속 질문)과 비슷하면 사전 작성 답변, 아니면 검색 결과 카드를 반환."""
     if not followup:
-        best = max(range(len(samples)), key=lambda i: _similar(question, samples[i]))
-        if _similar(question, samples[best]) > 0.7:
-            canned = dict(CANNED[best])
-            canned["cards"] = [c for c in canned["cards"] if c["category"] in categories]
-            if canned["cards"]:
+        best = match_sample(question, samples)
+        if best is not None:
+            canned = _filtered(CANNED[best], categories)
+            if canned:
                 return canned
+    elif sample_idx is not None and _matches_followup(question, sample_idx):
+        canned = _filtered(FOLLOWUPS[sample_idx][1], categories)
+        if canned:
+            return canned
     return _from_retrieval(question, categories, retrieved)
+
+
+def match_sample(question: str, samples: list[str]) -> int | None:
+    best = max(range(len(samples)), key=lambda i: _similar(question, samples[i]))
+    return best if _similar(question, samples[best]) > 0.7 else None
+
+
+# 샘플별 대표 후속 질문으로 인식할 핵심 표현 (해당 샘플로 시작한 상담에서만 적용)
+FOLLOWUP_KEYWORDS = [
+    ["뜯", "개봉", "사용했", "써버", "먹었", "이미 받"],
+    ["줬", "줘버", "주었", "드렸", "지급", "냈", "송금", "건넸", "이미"],
+    ["이미", "벌써", "진행됐", "적용", "거래했", "반영"],
+    ["말해", "말했", "알려줬", "얘기했", "언급", "흘렸"],
+    ["이미", "벌써", "점수", "매겼", "평가했", "심사했", "진행했"],
+    ["카드", "명세", "결제 내역", "대체", "대신"],
+]
+
+
+def _matches_followup(question: str, idx: int) -> bool:
+    q = question.replace(" ", "")
+    return question.strip() == FOLLOWUPS[idx][0] or any(k.replace(" ", "") in q for k in FOLLOWUP_KEYWORDS[idx])
+
+
+def _filtered(canned: dict, categories: list[str]) -> dict | None:
+    cards = [c for c in canned["cards"] if c["category"] in categories]
+    return {**canned, "cards": cards} if cards else None
 
 
 def _from_retrieval(question, categories, retrieved) -> dict:
@@ -213,3 +243,159 @@ def _from_retrieval(question, categories, retrieved) -> dict:
                       "판단하기 어려우면 조직책임자와 먼저 상의하세요",
                       "부패방지 규정 해석이 필요하면 준법사무국에 문의하세요"],
     }
+
+
+# 샘플별 대표 후속 질문과 사전 작성 답변 (CANNED와 같은 순서)
+FOLLOWUPS = [
+    ("이미 포장을 뜯었거나 일부 사용했다면 어떻게 해야 하나요?", {
+        "situation_summary": "고가 명절 선물을 이미 개봉·일부 사용한 뒤 처리 방법을 묻는 상황",
+        "has_basis": True, "no_basis_message": "",
+        "cards": [
+            {"category": "anticorruption", "relevance": "direct",
+             "clause_title": "제13조 위반행위 신고 · 부칙 제2조 해석",
+             "summary": "규정에는 '이미 개봉한 선물'의 처리 절차가 따로 적혀 있지 않습니다. 다만 위반이 의심되거나 우려가 "
+                        "있는 사실을 인지하면 즉시 부서의 장 또는 신문고에 알려야 하고(제13조 1항), 신고자는 비밀이 "
+                        "보장되며 불이익을 받지 않습니다(제13조 3항). 규정에 없거나 판단이 어려운 사항은 준법사무국의 "
+                        "해석에 따릅니다(부칙 제2조).",
+             "action": "개봉했다는 이유로 숨기거나 그대로 사용하지 말고, 받은 사실과 현재 상태를 있는 그대로 부서의 장에게 "
+                       "알리세요. 반환·처리 방법은 준법사무국의 해석을 받아 결정하세요.",
+             "sources": ["부패방지 규정 제13조(위반행위에 대한 신고)", "부패방지 규정 부칙 제2조(해석)",
+                         "부패방지 규정 제6조(선물 및 접대)"]},
+            {"category": "ethics", "relevance": "indirect",
+             "clause_title": "제4장 1. 기본윤리",
+             "summary": "임직원은 항상 정직하고 공정한 자세를 견지한다.",
+             "action": "이미 받은 사실을 감추지 않고 정직하게 공유하는 것이 원칙입니다.",
+             "sources": ["윤리규범 제4장 1.기본윤리"]},
+            {"category": "conduct", "relevance": "direct",
+             "clause_title": "'들어가기에 앞서' – 임직원의 의무",
+             "summary": "판단하기 어려운 상황에서는 상사나 관련부서에 자문을 구한 후 조치하고, 행동강령이나 회사정책 위반으로 "
+                        "의심되는 행위는 반드시 보고해야 합니다. 먼저 조직책임자와 상의하고, 해결되지 않으면 Compliance "
+                        "Manager에게 보고합니다.",
+             "action": "혼자 판단해 처리하지 말고 조직책임자와 먼저 상의하세요.",
+             "sources": [C_INTRO]},
+        ],
+        "checklist": ["개봉·사용 사실을 숨기지 마세요",
+                      "받은 사실과 현재 상태를 부서의 장에게 알리세요",
+                      "처리 방법은 준법사무국의 해석을 받으세요",
+                      "결정된 처리 내용을 기록으로 남기세요"],
+    }),
+    ("이미 컨설턴트에게 돈을 줬다면 어떻게 해야 하나요?", {
+        "situation_summary": "통관 컨설턴트에게 이미 금품을 지급한 뒤 대응 방법을 묻는 상황",
+        "has_basis": True, "no_basis_message": "",
+        "cards": [
+            {"category": "anticorruption", "relevance": "direct",
+             "clause_title": "제13조 신고 · 제14조 위반행위에 대한 조치 · 제12조 조사",
+             "summary": "위반사실이나 위반이 의심되는 사실을 인지하면 즉시 부서의 장 또는 신문고에 신고해야 하며, 신고자의 "
+                        "비밀은 보장되고 불이익을 주어서는 안 됩니다(제13조). 위반하거나 위반을 발견하고도 합리적인 조치를 "
+                        "취하지 않으면 회사는 대신 책임지지 않고 징계할 수 있으며, 민·형사 책임에 대한 지원 의무도 지지 "
+                        "않습니다(제14조). 회사의 조사에는 적극 협조해야 합니다(제12조).",
+             "action": "추가 지급을 멈추고, 지급 사실을 즉시 부서의 장 또는 신문고에 신고하세요. 이후 회사 조사에 협조하세요.",
+             "sources": ["부패방지 규정 제13조(위반행위에 대한 신고)", "부패방지 규정 제14조(위반행위에 대한 조치)",
+                         "부패방지 규정 제12조(조사 및 모니터링)"]},
+            {"category": "conduct", "relevance": "direct",
+             "clause_title": "'뇌물수수 금지' · 위반 시 보고",
+             "summary": "대리인 등이 회사를 대신해 뇌물을 줘도 그 사실을 알았거나 알 수 있었다면 회사가 책임을 집니다. "
+                        "'상사가 시켜서', '회사 목표 달성을 위해' 같은 변명은 용납되지 않으며, 보고 후 보복이 우려되면 즉시 "
+                        "인사부서에 알릴 수 있습니다.",
+             "action": "숨기거나 사후에 정당화하지 말고 바로 보고하세요. 보복이 걱정되면 인사부서에 알리세요.",
+             "sources": ["행동강령 '뇌물수수 금지' > 정도의 실천", C_INTRO]},
+        ],
+        "checklist": ["추가 지급이나 연락을 멈추세요",
+                      "지급 사실을 즉시 부서의 장 또는 신문고에 신고하세요",
+                      "지급 내역 등 관련 자료를 그대로 보존하세요",
+                      "회사 조사에 협조하고, 보복이 우려되면 인사부서에 알리세요"],
+    }),
+    ("이미 조정된 가격으로 거래가 진행됐다면 어떻게 하나요?", {
+        "situation_summary": "세금 감소 목적으로 조정된 법인 간 거래가격이 이미 적용된 상황",
+        "has_basis": True, "no_basis_message": "",
+        "cards": [
+            {"category": "tax", "relevance": "direct",
+             "clause_title": "감내 가능한 세무 리스크 관리(Affordable level of tax risk management) · "
+                             "세무당국에 대한 태도(Attitude towards Tax Authorities)",
+             "summary": "회사는 불확실한 세무 이슈를 가능한 한 이른 시점에 식별·모니터링하고, 사업에 중대한 영향을 줄 수 있는 "
+                        "불명확한 이슈는 외부 세무 자문과 협력해 세무당국과 협의합니다(3). 세무당국과는 투명하고 정직하며 "
+                        "전문적으로 협력하고, 요청 시 글로벌 세무회계 책임자 통제하의 현지 회계 담당자를 통해 정보를 "
+                        "제공합니다(4).",
+             "action": "이미 적용된 거래 내역을 내부 세무관리팀에 즉시 공유하세요. 정상가격 원칙(Transparent Trade) 위반 "
+                       "여부와 대응 방안은 세무팀과 외부 세무 자문을 통해 판단하세요.",
+             "sources": ["Tax Policy 3. Affordable level of tax risk management",
+                         "Tax Policy 4. Attitude towards Tax Authorities", "Tax Policy 1-2) Transparent Trade"]},
+            {"category": "ethics", "relevance": "indirect",
+             "clause_title": "제6장 3. 사회발전에 기여",
+             "summary": "조세의 성실한 납부로 국가발전에 기여한다.",
+             "action": "문제를 덮지 말고 성실 납부 원칙에 따라 바로잡는 방향으로 대응해야 합니다.",
+             "sources": ["윤리규범 제6장 3.사회발전에 기여"]},
+        ],
+        "checklist": ["같은 방식의 가격 조정을 더 진행하지 마세요",
+                      "적용된 거래 내역을 내부 세무관리팀에 즉시 공유하세요",
+                      "관련 계약서·송장 등 기록을 그대로 보존하세요",
+                      "대응 방안은 세무팀·외부 세무 자문을 거쳐 결정하세요"],
+    }),
+    ("이미 대략적인 출시 시기를 말해버렸다면 어떻게 하나요?", {
+        "situation_summary": "전 직장 동료에게 미공개 제품의 출시 시기를 이미 언급한 상황",
+        "has_basis": True, "no_basis_message": "",
+        "cards": [
+            {"category": "conduct", "relevance": "direct",
+             "clause_title": "'정보보안과 기밀 유지' · '내부자 정보'",
+             "summary": "회사기밀이나 업무상 민감한 정보는 외부에 발설하면 안 되며, 의문사항은 조직책임자나 정보보안 담당자와 "
+                        "상의해야 합니다. 내부자 정보가 무단 공개된 사실을 알게 되면 즉시 법무담당 부서에 보고해야 하고, "
+                        "정보를 전달받은 상대에게도 다시 언급하지 않도록 주의를 줘야 합니다.",
+             "action": "더 이상 말하지 말고, 언급한 내용을 조직책임자·정보보안 담당자에게 바로 알리세요. 출시 일정이 내부자 "
+                       "정보에 해당할 수 있으면 법무담당 부서에도 보고하세요.",
+             "sources": ["행동강령 '정보보안과 기밀 유지' > 정도의 실천",
+                         "행동강령 '정보보안과 기밀 유지' > 바람직한 대처방식",
+                         "행동강령 '내부자 정보' > 정도의 실천", "행동강령 '내부자 정보' > 바람직한 대처방식"]},
+            {"category": "ethics", "relevance": "direct",
+             "clause_title": "제4장 2. 사명의 완수",
+             "summary": "업무상 취득한 회사의 비밀을 보호한다.",
+             "action": "이미 말한 내용이 더 퍼지지 않도록 즉시 조치하는 것도 비밀 보호 의무에 포함됩니다.",
+             "sources": ["윤리규범 제4장 2.사명의 완수"]},
+        ],
+        "checklist": ["추가 정보는 말하지 마세요",
+                      "상대에게 들은 내용을 공유하지 말아 달라고 요청하세요",
+                      "조직책임자·정보보안 담당자에게 언급한 내용을 알리세요",
+                      "내부자 정보에 해당할 수 있으면 법무담당 부서에 보고하세요"],
+    }),
+    ("이미 심사를 진행해서 점수를 매겼다면 어떻게 하나요?", {
+        "situation_summary": "친척 회사에 대한 협력사 심사를 이미 일부 진행한 상황",
+        "has_basis": True, "no_basis_message": "",
+        "cards": [
+            {"category": "ethics", "relevance": "direct",
+             "clause_title": "제4장 5. 회사와의 이해상충 회피",
+             "summary": "회사와 개인의 이해가 상충되는 어떠한 행위나 관계도 회피한다.",
+             "action": "지금 시점부터라도 해당 심사에서 빠지는 것이 원칙입니다.",
+             "sources": ["윤리규범 제4장 5.회사와의 이해상충 회피"]},
+            {"category": "anticorruption", "relevance": "direct",
+             "clause_title": "제10조 이해충돌 등",
+             "summary": "이해충돌이 불가피한 경우 원칙적으로 관련 업무에서 배제되어야 하며, 인사부서 또는 준법사무국에 신고한 뒤 "
+                        "회사의 결정에 따라야 합니다. 이미 진행한 심사를 어떻게 처리할지는 규정에 따로 적혀 있지 않으므로 "
+                        "회사의 결정을 따릅니다.",
+             "action": "남은 심사 업무에서 즉시 빠지고, 이미 심사에 참여한 사실까지 포함해 인사부서 또는 준법사무국에 "
+                       "신고하세요.",
+             "sources": ["부패방지 규정 제10조(이해충돌 등)", "부패방지 규정 부칙 제2조(해석)"]},
+            {"category": "conduct", "relevance": "indirect",
+             "clause_title": "'협력업체와의 관계'",
+             "summary": "협력업체 관련 의사결정은 객관적이고 공정한 기준에 따르고, 이를 뒷받침할 근거 자료를 남겨야 합니다.",
+             "action": "이미 작성한 심사 점수와 근거 자료는 고치지 말고 그대로 제출해 회사가 판단할 수 있게 하세요.",
+             "sources": ["행동강령 '협력업체와의 관계' > 정도의 실천"]},
+        ],
+        "checklist": ["남은 심사 업무에서 즉시 빠지세요",
+                      "심사 참여 사실까지 포함해 인사부서 또는 준법사무국에 신고하세요",
+                      "작성한 점수·근거 자료를 수정하지 말고 그대로 제출하세요",
+                      "재심사 여부 등은 회사의 결정에 따르세요"],
+    }),
+    ("카드 결제 내역으로 영수증을 대신할 수 있나요?", {
+        "situation_summary": "분실한 영수증 대신 카드 결제 내역을 증빙으로 쓸 수 있는지 묻는 상황",
+        "has_basis": False,
+        "no_basis_message": "규범 문서에 직접 규정이 없습니다. 세무 정책(Tax Policy)은 회사 차원의 조세 원칙 문서로, 개인 "
+                            "경비의 증빙 대체 기준은 다루지 않습니다. 대체 증빙 인정 여부는 재무·회계팀에 문의하시기를 "
+                            "권장합니다.",
+        "cards": [
+            {"category": "tax", "relevance": "none", "clause_title": "직접 관련 조항 없음",
+             "summary": "이 문서에는 직접 관련된 조항이 없습니다.", "action": "", "sources": []},
+        ],
+        "checklist": ["대체 증빙 인정 여부를 재무·회계팀에 문의하세요",
+                      "확인 전에는 임의로 정산하지 마세요",
+                      "안내받은 기준에 따라 처리하세요"],
+    }),
+]
