@@ -4,6 +4,7 @@
 ANTHROPIC_API_KEY가 없으면 데모 모드(API 미사용)로 동작한다.
 """
 
+import base64
 import html
 import os
 import sys
@@ -19,7 +20,20 @@ except ImportError:  # 브라우저(stlite) 배포본은 데모 모드 전용
 import demo
 import rag
 
-st.set_page_config(page_title="LENS - LG Employee Norm Support", page_icon="🔍", layout="wide")
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+try:
+    st.set_page_config(page_title="LENS - LG Employee Norm Support",
+                       page_icon=os.path.join(ASSETS, "favicon.png"), layout="wide")
+except Exception:  # 이미지 아이콘을 못 읽는 환경이면 이모지로 대체
+    st.set_page_config(page_title="LENS - LG Employee Norm Support", page_icon="🔍", layout="wide")
+
+
+def _data_uri(name: str) -> str:
+    with open(os.path.join(ASSETS, name), "rb") as f:
+        return "data:image/png;base64," + base64.b64encode(f.read()).decode()
+
+
+LOGO_SYMBOL = _data_uri("lens-symbol.png")
 
 CAT_COLOR = {"anticorruption": "#A50034", "ethics": "#5B4BD6", "conduct": "#D9730D", "tax": "#0F7B8A"}
 
@@ -54,17 +68,21 @@ st.markdown("""
 .summary-line {font-size:1.3rem; padding:14px 18px; background:#f4f4f6; border-radius:8px; margin:6px 0 4px}
 .disclaimer-bar {position:fixed; left:0; right:0; bottom:0; z-index:999; background:#2b2b2b; color:#fff;
                  font-size:.95rem; text-align:center; padding:8px 12px}
-.lens-title {font-size:5.5rem !important; font-weight:900; letter-spacing:.08em; color:#A50034; line-height:1.05; margin:0 0 4px}
-.lens-sub {font-size:2rem !important; font-weight:700; color:#555; margin:0 0 16px}
+.lens-header {display:flex; align-items:center; gap:28px; margin:0 0 14px}
+.lens-header img {height:150px; width:auto; flex:none}
+.lens-title {font-size:5.5rem !important; font-weight:900; letter-spacing:.08em; color:#9D042C; line-height:1; margin:0 0 6px}
+.lens-sub {font-size:2rem !important; font-weight:700; letter-spacing:.12em; color:#6b2a3a; margin:0}
 .lens-lead {font-size:1.2rem !important; line-height:1.7; margin-bottom:10px}
-@media (max-width: 640px) {.lens-title {font-size:3.4rem !important} .lens-sub {font-size:1.4rem !important}}
+@media (max-width: 640px) {.lens-header {gap:14px} .lens-header img {height:84px}
+  .lens-title {font-size:3.2rem !important} .lens-sub {font-size:1rem !important; letter-spacing:.06em}}
 .nobasis {font-size:1.25rem; line-height:1.7; background:#fff4e5; border-left:6px solid #E8A33D; border-radius:8px; padding:14px 18px; margin:10px 0}
 .todo-title {font-size:1.5rem; font-weight:800; margin:22px 0 6px}
 div[data-testid='stCheckbox'] label p {font-size:1.2rem !important; line-height:1.7}
 .stTextArea textarea {font-size:1.15rem !important}
 @media (prefers-color-scheme: dark) {
   .norm-card {border-color:#333; --bg:#1b1b1f} .summary-line {background:#26262b}
-  .action {background:#3a1f28} .label, .rel, .lens-sub {color:#aaa} .nobasis {background:#3a2a14}
+  .action {background:#3a1f28} .label, .rel {color:#aaa} .lens-sub {color:#e3b3bf} .lens-title {color:#e0405f}
+  .lens-header img {background:#fff; border-radius:24px; padding:10px} .nobasis {background:#3a2a14}
 }
 </style>
 """, unsafe_allow_html=True)
@@ -115,8 +133,9 @@ with st.sidebar:
     st.button("🔄 새 상담 시작", on_click=reset)
 
 # ---------------------------------------------------------------- 입력 ---
-st.markdown("<div class='lens-title'>🔍 LENS</div>"
-            "<div class='lens-sub'>LG Employee Norm Support</div>"
+st.markdown(f"<div class='lens-header'><img src='{LOGO_SYMBOL}' alt='LENS 심볼'>"
+            "<div><div class='lens-title'>LENS</div>"
+            "<div class='lens-sub'>LG EMPLOYEE NORM SUPPORT</div></div></div>"
             "<div class='lens-lead'>내 상황을 말하면 <b>행동강령 · 윤리규범 · 부패방지 규정 · 세무 정책</b>에서 "
             "해당 조항을 찾아 <b>지금 어떻게 해야 하는지</b> 알려드립니다.</div>", unsafe_allow_html=True)
 

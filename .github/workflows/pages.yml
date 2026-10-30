@@ -29,6 +29,7 @@ jobs:
           cp site/index.html _site/
           cp app.py rag.py demo.py _site/
           cp corpus/*.txt _site/corpus/
+          mkdir -p _site/assets && cp assets/*.png _site/assets/
           # 배포마다 파일 URL에 커밋 해시를 붙여 브라우저 캐시(최대 10분)를 우회
           sed -i "s/__BUILD__/${GITHUB_SHA::7}/g" _site/index.html
 

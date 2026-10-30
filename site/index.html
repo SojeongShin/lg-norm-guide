@@ -4,13 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>LENS - LG Employee Norm Support</title>
+    <link rel="icon" type="image/png" href="./assets/favicon.png" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/browser@1.10.0/build/stlite.css" />
     <style>
-      #loading { font-family: sans-serif; text-align: center; margin-top: 30vh; color: #555; }
+      #loading { font-family: sans-serif; text-align: center; margin-top: 18vh; color: #6b2a3a; }
+      #loading img { width: min(260px, 60vw); display: block; margin: 0 auto 24px; }
+      #loading p { font-size: 1.05rem; animation: pulse 1.6s ease-in-out infinite; }
+      @keyframes pulse { 50% { opacity: .45; } }
     </style>
   </head>
   <body>
-    <div id="root"><p id="loading">🔍 LENS(LG Employee Norm Support)를 불러오는 중입니다… (첫 로딩은 10~30초 걸릴 수 있습니다)</p></div>
+    <div id="root"><div id="loading"><img src="./assets/lens-logo.png" alt="LENS - LG Employee Norm Support" /><p>불러오는 중입니다… (첫 로딩은 10~30초 걸릴 수 있습니다)</p></div></div>
     <script type="module">
       import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@1.10.0/build/stlite.js";
       // 브라우저(Pyodide)에서 실행되는 데모 모드 전용 배포본 - API 키를 사용하지 않는다.
@@ -26,6 +30,8 @@
             "corpus/ethics.txt": { url: "./corpus/ethics.txt?v=__BUILD__" },
             "corpus/conduct.txt": { url: "./corpus/conduct.txt?v=__BUILD__" },
             "corpus/tax.txt": { url: "./corpus/tax.txt?v=__BUILD__" },
+            "assets/lens-symbol.png": { url: "./assets/lens-symbol.png?v=__BUILD__" },
+            "assets/favicon.png": { url: "./assets/favicon.png?v=__BUILD__" },
           },
           streamlitConfig: { "client.toolbarMode": "viewer" },
         },
